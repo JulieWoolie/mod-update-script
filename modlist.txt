@@ -18,11 +18,14 @@ YL57xq9U Iris Shaders
 bEpr0Arc Litematica
 XaDC71GB Lithosthitched
 GcWjdA9I MaLiLib
+UMxybHE8 MiniHUD
 mOgUt4GM Mod Menu
 8qkXwOnk More Chat History
 MPCX6s5C Not Enough Animations
 nrikgvxm Particle Rain
 rcTfTZr3 Presence Footsteps
+EJc9w2pm Quickcraft
+nfn13YXA Roughly Enough Items
 zV5r3pPn Skin Layers 3D
 diCZrsch Slyde
 AANobbMI Sodium
