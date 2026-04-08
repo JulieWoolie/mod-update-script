@@ -5,10 +5,10 @@ Deno script to update mods via the modrinth API
 - Download the `index.ts` script somewhere
 - Create a file `modlist.txt` in the same directory as the `index.ts`.
 - Fill out the `modlist.txt` file with the Modrinth IDs of the mods you wanna update and their names (See example mod list)
-- Run `deno run --allow-all index.ts`
+- Run `deno run --allow-all index.ts --version=MC_VERSION_HERE`
 
 ## Running
-Run `deno run --allow-all index.ts`
+Run `deno run --allow-all index.ts --version=MC_VERSION_HERE`
 
 ## Command Line Arguments
 ```txt
