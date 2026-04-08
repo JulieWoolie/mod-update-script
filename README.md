@@ -21,4 +21,4 @@ Sets the mod loader the script downloads mods for, defaults to `fabric`
 #### `--modlist-file`
 Sets the path of the modlist txt file, defaults to `modlist.txt`
 #### `--output-dir`
-Sets the directory the downloaded mods are placed into, defaults to `../`
+Sets the directory the downloaded mods are placed into, defaults to mods folder inside Minecraft install location
