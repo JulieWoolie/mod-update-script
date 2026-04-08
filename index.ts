@@ -37,9 +37,35 @@ type DownloadEntry = DownloadEntryError | DownloadEntrySuccess
 const LOADER = `fabric`
 const VERSION = `1.21.11`
 const MODLIST_FILE = "./modlist.txt"
-const OUTPUT_DIR = `..`
+const OUTPUT_DIR = `${getMinecraftFolder()}/mods`
 const API_BASE_URL = `https://api.modrinth.com/v2`
 const PRINT_BORDER = `---------------------------------------------------`
+
+function getMinecraftFolder(): string {
+  const os = Deno.build.os
+
+  if (os == "windows") {
+    const appdata = Deno.env.get("APPDATA")
+    if (!appdata) {
+      throw "No APPDATA env variable"
+    }
+    return `${appdata}/.minecraft`
+  }
+
+  const home = Deno.env.get("HOME") || Deno.env.get("USERPROFILE")
+  if (!home) {
+    throw "HOME env variable not set"
+  }
+
+  if (os == "darwin") {
+    return `${home}/Library/Application Support/minecraft`
+  }
+  if (os == "linux") {
+    return `${home}/.minecraft`
+  }
+
+  throw "Unsupported Operating System"
+}
 
 main()
 
@@ -59,6 +85,11 @@ async function main() {
   if (!fileExists(params.modlistFile)) {
     console.log(`[FAILED ] Modlist file (${params.modlistFile}) does not exist`)
     return
+  }
+
+  if (!fileExists(params.outputDir)) {
+    fs.mkdirSync(params.outputDir, {recursive: true})
+    console.log("[INFO   ] Created output folder")
   }
 
   let modlist: ModEntry[]
