@@ -22,6 +22,8 @@ interface DownloadEntrySuccess {
   mod: ModEntry
   downloadUrl: string
   filename: string
+  version: string
+  olderFileNames: string[]
 }
 
 interface DownloadEntryError {
@@ -37,14 +39,22 @@ const VERSION = `1.21.11`
 const MODLIST_FILE = "./modlist.txt"
 const OUTPUT_DIR = `..`
 const API_BASE_URL = `https://api.modrinth.com/v2`
+const PRINT_BORDER = `---------------------------------------------------`
 
 main()
 
 async function main() {
   const params: Params = setupParams()
 
-  console.log(`Finding updated mods for ${params.loader}, version: ${params.version}`)
-  console.log(`modlist file: ${params.modlistFile}, output directory: ${params.outputDir}`)
+  console.log(PRINT_BORDER)
+  console.log("Running mod update script...")
+  console.log("")
+  console.log("Parameters:")
+  console.log(`  Target version = ${params.version}`)
+  console.log(`  Loader = ${params.loader}`)
+  console.log(`  Modlist file = ${params.modlistFile}`)
+  console.log(`  Output directory = ${params.outputDir}`)
+  console.log(PRINT_BORDER)
 
   if (!fileExists(params.modlistFile)) {
     console.log(`[FAILED ] Modlist file (${params.modlistFile}) does not exist`)
@@ -68,6 +78,8 @@ async function main() {
   }
 
   await downloadEntries(entries, params)
+
+  console.log(PRINT_BORDER)
 }
 
 async function downloadEntries(entries: DownloadEntry[], params: Params) {
@@ -79,17 +91,20 @@ async function downloadEntries(entries: DownloadEntry[], params: Params) {
     if (e.type == "err") {
       console.log(`[FAILED ] ${e.mod.name} failed to find: ${e.message}`)
       failed++
-    } else {
-      const outPath = `${params.outputDir}/${e.filename}`
-      if (!fileExists(outPath)) {
-        console.log(`[SUCCESS] ${e.mod.name} found. filename = ${e.filename}`)
-        toDownloadCount++
-      }
-      succeeded++
+      continue
     }
+
+    const outPath = `${params.outputDir}/${e.filename}`
+
+    if (!fileExists(outPath)) {
+      console.log(`[SUCCESS] ${e.mod.name} found. filename = ${e.filename}`)
+      toDownloadCount++
+    }
+
+    succeeded++
   }
 
-  console.log(`Found ${succeeded} mods, failed to find ${failed} mods, total: ${entries.length}`)
+  console.log(`[INFO   ] Found ${succeeded} mods, failed to find ${failed} mods, total: ${entries.length}`)
 
   if (toDownloadCount > 0) {
     console.log("Downloading...")
@@ -107,6 +122,17 @@ async function downloadEntries(entries: DownloadEntry[], params: Params) {
       continue
     }
 
+    // Delete older versions
+    for (const oldFile of entry.olderFileNames) {
+      const oldPath = `${params.outputDir}/${oldFile}`
+      console.log(`  old path: ${oldFile}`)
+      if (!fileExists(oldPath)) {
+        continue
+      }
+      fs.rmSync(oldPath)
+      console.log(`[DELETED] Deleted old mod version: ${oldFile}`)
+    }
+
     try {
       await download(entry.downloadUrl, outPath)
       console.log(`[SUCCESS] Downloaded ${entry.filename}`)
@@ -120,7 +146,7 @@ async function findUrlsAndVersions(params: Params, modlist: ModEntry[]): Promise
   const arr: DownloadEntry[] = []
 
   for (const mod of modlist) {
-    const apiUrl = `${API_BASE_URL}/project/${mod.id}/version?loaders=["${params.loader}"]&game_versions=["${params.version}"]`
+    const apiUrl = `${API_BASE_URL}/project/${mod.id}/version?loaders=["${params.loader}"]&game_versions=["${params.version}"]&incldude_changelog=false`
 
     try {
       const result = await findModVersion(apiUrl, mod, params)
@@ -150,14 +176,38 @@ async function findModVersion(apiUrl: string, mod: ModEntry, params: Params): Pr
     }
   }
 
-  const versionData = json[0];
-  const file = versionData.files[0]
+  for (let i = 0; i < json.length; i++) {
+    const versionData = json[i]
+    if (versionData.status != "listed") {
+      continue
+    }
+
+    const file = versionData.files[0]
+    const oldVersions: string[] = []
+
+    for (let pi = i + 1; pi < json.length; pi++) {
+      const oldv = json[pi]
+      const oldFiles = oldv.files
+
+      for (const fdata of oldFiles) {
+        oldVersions.push(fdata.filename)
+      }
+    }
+
+    return {
+      type: "found",
+      mod,
+      downloadUrl: file.url,
+      filename: file.filename,
+      version: versionData.version_number,
+      olderFileNames: oldVersions
+    }
+  }
 
   return {
-    type: "found",
-    mod,
-    downloadUrl: file.url,
-    filename: file.filename
+    type: "err",
+    message: `Unable to find ${params.loader} mod listed for version ${params.version}`,
+    mod
   }
 }
 
@@ -231,7 +281,18 @@ async function loadModList(fname: string): Promise<ModEntry[]> {
   const split: string[] = str.split(/[\r\n]+/)
 
   for (const kv of split) {
-    const [id, name] = kv.split(/\s+/)
+    const elements: string[] = kv.split(/\s+/)
+
+    const id = elements[0]
+    let name = ""
+
+    for (let i = 1; i < elements.length; i++) {
+      if (i != 1) {
+        name += " "
+      }
+      name += elements[i];
+    }
+
     arr.push({id, name})
   }
 
